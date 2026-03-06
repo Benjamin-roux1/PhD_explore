@@ -12,7 +12,7 @@ GMBA <- st_read("GMBA_inventory_v2.0_standard_300/GMBA_inventory_v2.0_standard_3
 mapview(GMBA, zcol = "MapName", legend = FALSE)
 
 GMBA_vect <- terra::vect(GMBA)
-plot(GMBA_vect)
+plot(GMBA_vect) #ej fais une modification ici 
 
 CHELSA_clim <- read.table("CHELSA/CHELSA_clim.txt")[,1]
 NAME <- unlist(lapply(strsplit(CHELSA_clim,"/"),function(x) x[10]))
