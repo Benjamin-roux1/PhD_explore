@@ -61,8 +61,9 @@ ds <- arrow::open_dataset("data/Squamata_parquet")
 parquetclean_dir <- "data/gbif_parquetclean"
 years <- 1980:2026
 
-if (!dir.exists(parquetclean_dir)) {
-  for (y in years) {
+if (!dir.exists(clean_path)) dir.create(clean_path, recursive = TRUE)
+
+for (y in years) {
   
   cat("Processing year:", y, "\n")
   
@@ -70,8 +71,7 @@ if (!dir.exists(parquetclean_dir)) {
   occ <- ds %>%
     filter(year == y) %>%
     filter(taxonRank %in% c("SPECIES", "SUBSPECIES"), basisOfRecord %in% c("HUMAN_OBSERVATION", "MACHINE_OBSERVATION")) %>%
-    collect() %>%
-    as.data.frame()
+    collect() 
   
   if (nrow(occ) == 0) next
   
@@ -82,10 +82,10 @@ if (!dir.exists(parquetclean_dir)) {
   occ <- occ[occ$val & occ$zero & occ$equ, ]
   occ <- cc_dupl(occ, lon = "decimalLongitude", lat = "decimalLatitude")
   
-  # resave in parquet again
-  arrow::write_dataset(occ, paste0("data/gbif_clean/occ_", y, ".parquet"))
+  # re save in parquet again
+  arrow::write_parquet(occ, file.path(clean_path, paste0("occ_", y, ".parquet")))
   
   rm(occ)
   gc()
   }
-}
+
