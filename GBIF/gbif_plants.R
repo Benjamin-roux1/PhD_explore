@@ -54,3 +54,38 @@ if (!dir.exists(parquet_dir)) {
   unlink(dirname(file_path), recursive = TRUE)
   message("Conversion to Parquet complete and raw file cleaned!")
 }
+
+# 3. Data cleaning
+ds <- arrow::open_dataset("data/Squamata_parquet")
+
+parquetclean_dir <- "data/gbif_parquetclean"
+years <- 1980:2026
+
+if (!dir.exists(parquetclean_dir)) {
+  for (y in years) {
+  
+  cat("Processing year:", y, "\n")
+  
+  # Download year per year
+  occ <- ds %>%
+    filter(year == y) %>%
+    filter(taxonRank %in% c("SPECIES", "SUBSPECIES"), basisOfRecord %in% c("HUMAN_OBSERVATION", "MACHINE_OBSERVATION")) %>%
+    collect() %>%
+    as.data.frame()
+  
+  if (nrow(occ) == 0) next
+  
+  # CoordinateCleaner
+  occ$val  <- cc_val(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
+  occ$zero <- cc_zero(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
+  occ$equ  <- cc_equ(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
+  occ <- occ[occ$val & occ$zero & occ$equ, ]
+  occ <- cc_dupl(occ, lon = "decimalLongitude", lat = "decimalLatitude")
+  
+  # resave in parquet again
+  arrow::write_dataset(occ, paste0("data/gbif_clean/occ_", y, ".parquet"))
+  
+  rm(occ)
+  gc()
+  }
+}
