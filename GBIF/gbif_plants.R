@@ -9,6 +9,7 @@ library(rgbif)
 library(sf)
 library(CoordinateCleaner)
 library(data.table)
+library(dplyr)
 source("GBIF/GetGBIFData.R")
 
 # Increase memory overhead for large spatial joins if needed
@@ -58,34 +59,38 @@ if (!dir.exists(parquet_dir)) {
 # 3. Data cleaning
 ds <- arrow::open_dataset("data/Squamata_parquet")
 
-parquetclean_dir <- "data/gbif_parquetclean"
+clean_path <- "data/gbif_parquetclean"
 years <- 1980:2026
 
-if (!dir.exists(parquetclean_dir)) {
-  for (y in years) {
+if (!dir.exists(clean_path)) dir.create(clean_path, recursive = TRUE)
+
+for (y in years) {
   
   cat("Processing year:", y, "\n")
   
   # Download year per year
   occ <- ds %>%
     filter(year == y) %>%
-    filter(taxonRank %in% c("SPECIES", "SUBSPECIES"), basisOfRecord %in% c("HUMAN_OBSERVATION", "MACHINE_OBSERVATION")) %>%
+    filter(taxonRank %in% c("SPECIES", "SUBSPECIES"), basisOfRecord %in% c("HUMAN_OBSERVATION", "MACHINE_OBSERVATION", "PRESERVED_SPECIMEN")) %>%
     collect() %>%
     as.data.frame()
   
   if (nrow(occ) == 0) next
   
   # CoordinateCleaner
-  occ$val  <- cc_val(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
+  occ$val <- cc_val(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
   occ$zero <- cc_zero(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
-  occ$equ  <- cc_equ(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
-  occ <- occ[occ$val & occ$zero & occ$equ, ]
+  occ$equ <- cc_equ(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
+  occ$cap <- cc_cap(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
+  occ$inst <- cc_inst(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
+  occ_cen <- cc_cen(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
+  occ <- occ[occ$val & occ$zero & occ$equ & occ$cap & occ$inst & occ_cen, ]
   occ <- cc_dupl(occ, lon = "decimalLongitude", lat = "decimalLatitude")
   
   # resave in parquet again
-  arrow::write_dataset(occ, paste0("data/gbif_clean/occ_", y, ".parquet"))
+  arrow::write_parquet(occ, file.path(clean_path, paste0("occ_", y, ".parquet")))
   
   rm(occ)
   gc()
   }
-}
+
