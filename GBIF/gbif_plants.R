@@ -71,10 +71,10 @@ for (y in years) {
   # Download year per year
   occ <- ds %>%
     filter(year == y) %>%
+
     filter(taxonRank %in% c("SPECIES", "SUBSPECIES"), basisOfRecord %in% c("HUMAN_OBSERVATION", "MACHINE_OBSERVATION", "PRESERVED_SPECIMEN")) %>%
-    collect() %>%
-    as.data.frame()
-  
+    collect()
+
   if (nrow(occ) == 0) next
   
   # CoordinateCleaner
@@ -87,7 +87,7 @@ for (y in years) {
   occ <- occ[occ$val & occ$zero & occ$equ & occ$cap & occ$inst & occ_cen, ]
   occ <- cc_dupl(occ, lon = "decimalLongitude", lat = "decimalLatitude")
   
-  # resave in parquet again
+  # re save in parquet again
   arrow::write_parquet(occ, file.path(clean_path, paste0("occ_", y, ".parquet")))
   
   rm(occ)
