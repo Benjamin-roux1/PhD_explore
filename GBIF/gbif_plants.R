@@ -57,9 +57,9 @@ if (!dir.exists(parquet_dir)) {
 }
 
 # 3. Data cleaning
-ds <- arrow::open_dataset("data/Squamata_parquet")
+ds <- arrow::open_dataset("GBIF/data/Squamata_parquet")
 
-clean_path <- "data/gbif_parquetclean"
+clean_path <- "GBIF/data/Squamata_parquetclean"
 years <- 1980:2026
 
 if (!dir.exists(clean_path)) dir.create(clean_path, recursive = TRUE)
@@ -68,7 +68,7 @@ for (y in years) {
   
   cat("Processing year:", y, "\n")
   
-  # Download year per year
+  # 3.1. Download year per year
   occ <- ds %>%
     filter(year == y) %>%
 
@@ -77,7 +77,7 @@ for (y in years) {
 
   if (nrow(occ) == 0) next
   
-  # CoordinateCleaner
+  # 3.2. CoordinateCleaner
   occ$val <- cc_val(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
   occ$zero <- cc_zero(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
   occ$equ <- cc_equ(occ, lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged")
@@ -87,10 +87,21 @@ for (y in years) {
   occ <- occ[occ$val & occ$zero & occ$equ & occ$cap & occ$inst & occ_cen, ]
   occ <- cc_dupl(occ, lon = "decimalLongitude", lat = "decimalLatitude")
   
-  # re save in parquet again
+  # 3.3. Spatial filtering: keep occurrences only inside the mountains ranges
+  # convert data frame to sf object
+  occ_sf <- st_as_sf(occ, coords = c("decimalLongitude", "decimalLatitude"), crs = 4326, remove = FALSE)
+  # join our data frame with mountains polygons (keep occurrences only within mountains polygons)
+  occ_sf <- st_join(occ_sf, mountains, join = st_intersects, left = FALSE)
+  
+  if (nrow(occ_sf) == 0) next
+  
+  # back to dataframe
+  occ <- st_drop_geometry(occ_sf)
+  
+  # 3.4. re-save in parquet again
   arrow::write_parquet(occ, file.path(clean_path, paste0("occ_", y, ".parquet")))
   
   rm(occ)
   gc()
-  }
+}
 
