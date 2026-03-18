@@ -1,4 +1,3 @@
-
 # ------
 # Function to download GBIF data from gbif.com into an unzipped file
 DownloadGBIF <- function(key, user, user.email, pwd, custom.shp) {
@@ -11,7 +10,11 @@ DownloadGBIF <- function(key, user, user.email, pwd, custom.shp) {
   req <- rgbif::occ_download(
     rgbif::pred_in("taxonKey", key),
     rgbif::pred("hasCoordinate", TRUE),
+    rgbif::pred("hasGeospatialIssue", FALSE),
     rgbif::pred_within(aoi_wkt),
+    rgbif::pred_in("taxonRank", c("SPECIES", "SUBSPECIES")),
+    rgbif::pred_in("basisOfRecord",
+                   c("HUMAN_OBSERVATION", "MACHINE_OBSERVATION", "PRESERVED_SPECIMEN")),
     format = "DWCA", # <--- This is the Darwin Core Archive format
     user = user, pwd = pwd, email = user.email
   )
@@ -79,13 +82,11 @@ GBIF_to_Parquet <- function(file_path, parquet_dir) {
   arrow::write_dataset(occs, path = parquet_dir, format = "parquet", partitioning = "year")
   
   # 4. Cleanup 
-  file.remove(file_path)
+  unlink(dirname(file_path), recursive = TRUE)
   rm(occs)
   gc()
   
   message("Conversion to Parquet complete!")
   
-  # 5. Return output path
-  return(parquet_dir)
   }
 }
