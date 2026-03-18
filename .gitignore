@@ -1,4 +1,11 @@
+# RStudio / R temporary files
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+
+# GBIF / CHELSA data
+GBIF/data/
+CHELSA/data/
+*.parquet
+*.csv
