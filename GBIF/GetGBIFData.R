@@ -11,8 +11,8 @@ DownloadGBIF <- function(key, user, user.email, pwd, custom.shp) {
     rgbif::pred_in("taxonKey", key),
     rgbif::pred("hasCoordinate", TRUE),
     rgbif::pred("hasGeospatialIssue", FALSE),
+    rgbif::pred("occurrenceStatus", "PRESENT"),
     rgbif::pred_within(aoi_wkt),
-    rgbif::pred_in("taxonRank", c("SPECIES", "SUBSPECIES")),
     rgbif::pred_in("basisOfRecord",
                    c("HUMAN_OBSERVATION", "MACHINE_OBSERVATION", "PRESERVED_SPECIMEN")),
     format = "DWCA", # <--- This is the Darwin Core Archive format
