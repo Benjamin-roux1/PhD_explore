@@ -6,6 +6,7 @@
 
 # GBIF / CHELSA data
 GBIF/data/
-CHELSA/data/
+CHELSA/
 *.parquet
 *.csv
+*.tif
