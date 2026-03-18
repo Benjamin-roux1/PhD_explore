@@ -46,3 +46,8 @@ download_chelsa <- function(TF, method, vect, ext, outdir) {
   
   print("All files processed!")
 }
+
+TF <- read.table("elevation/dem.txt")[,1]
+method <- "raw"
+outdir <- "elevation"
+download_chelsa(TF=TF, method=method, outdir=outdir)
