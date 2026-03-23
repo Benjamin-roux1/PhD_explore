@@ -22,11 +22,31 @@ gbif_email <- Sys.getenv("GBIF_EMAIL") %||% rstudioapi::askForPassword("GBIF Ema
 gbif_pwd   <- Sys.getenv("GBIF_PWD") %||% rstudioapi::askForPassword("GBIF Password")
 
 # Load Mountain Shapefile
-mountains <- st_read("GMBA_Inventory_v2.0_standard_300/GMBA_Inventory_v2.0_standard_300.shp") %>%
-  st_make_valid() #
+sf::sf_use_s2(FALSE)
+# Define hemispheres
+west <- st_as_sfc(st_bbox(c(xmin = -180, ymin = -90, xmax = 0, ymax = 90), crs = 4326))
+east <- st_as_sfc(st_bbox(c(xmin = 0, ymin = -90, xmax = 180, ymax = 90), crs = 4326))
+
+mountains_raw <- st_read("GMBA_Inventory_v2.0_standard_300/GMBA_Inventory_v2.0_standard_300.shp")
+
+# Split problematic polygons by hemisphere
+prob <- mountains_raw[c(1, 12, 100), ]
+prob_west <- st_intersection(prob, west)
+prob_east <- st_intersection(prob, east)
+
+# Recombine with clean polygons
+mountains_clean <- mountains_raw[-c(1, 12, 100), ]
+mountains <- rbind(mountains_clean, prob_west, prob_east) %>%
+  st_convex_hull() %>%
+  st_union() %>%
+  st_make_valid() %>%
+  wk::wk_orient()
+
+plot(st_geometry(mountains))
+nrow(st_coordinates(mountains))
 
 # Get Taxon Key
-taxon_key <- name_backbone(name = "Aves", rank="class")$classKey
+taxon_key <- name_backbone(name = "Tracheophyta")$phylumKey
 
 # Note: Ensure it returns a dataframe or a path to the CSV
 gbif_res <- DownloadGBIF(taxon_key, gbif_user, gbif_email, gbif_pwd, mountains)
@@ -41,7 +61,7 @@ GBIF_to_Parquet(file_path = file_path, parquet_dir = parquet_dir)
 ds <- arrow::open_dataset("GBIF/data/gbif_parquet")
 
 clean_path <- "GBIF/data/gbif_parquetclean"
-years <- 1980:2026
+years <- 1874:1984
 
 if (!dir.exists(clean_path)) dir.create(clean_path, recursive = TRUE)
 
@@ -52,7 +72,8 @@ for (y in years) {
   # 3.1. Download year per year
   occ <- ds %>%
     filter(year == y) %>%
-
+    
+    # Filtering on basisOfRecord isn't necessary because it's done earlier (DownloadGBIF)
     filter(taxonRank %in% c("SPECIES", "SUBSPECIES"), basisOfRecord %in% c("HUMAN_OBSERVATION", "MACHINE_OBSERVATION", "PRESERVED_SPECIMEN")) %>%
     collect()
 
@@ -86,4 +107,3 @@ for (y in years) {
   rm(occ_sf)
   gc()
 }
-
