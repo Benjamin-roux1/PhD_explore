@@ -8,7 +8,7 @@ DownloadGBIF <- function(key, user, user.email, pwd, custom.shp) {
   
   # 2. Trigger download - CHANGE FORMAT TO "DWCA"
   req <- rgbif::occ_download(
-    # rgbif::pred_in("year", 1980), # Add only if the file is too big
+    rgbif::pred_in("year", 2025:2026), # Add only if the file is too big
     rgbif::pred_in("taxonKey", key),
     rgbif::pred("hasCoordinate", TRUE),
     rgbif::pred("hasGeospatialIssue", FALSE),
@@ -32,7 +32,7 @@ DownloadGBIF <- function(key, user, user.email, pwd, custom.shp) {
   
   # 4. Retrieval and Unzipping
   if(!dir.exists("GBIF/data/dwc_raw")) dir.create("GBIF/data/dwc_raw", recursive = TRUE)
-  
+  req <- "0072817-260226173443078"
   download_info <- rgbif::occ_download_get(req, path = "GBIF/data/dwc_raw", overwrite = TRUE)
   
   # DwC-A contains multiple files, so we unzip into a folder named by the Key
@@ -66,18 +66,16 @@ GBIF_to_Parquet <- function(file_path, parquet_dir) {
   chunk_id <- 0
   
   # 2. Read + process in chunks + write to Parquet
-  bigreadr::big_fread1(file_path, every_nlines = 1e6, integer64 = "double", 
-                               nThread = parallel::detectCores()-1, verbose = TRUE, 
+  bigreadr::big_fread1(file_path, every_nlines = 1e6, integer64 = "double", sep = "\t",
+                       quote = "", nThread = parallel::detectCores()-1, verbose = TRUE, 
                                .transform = function(x) {
-                                 chunk_id <- chunk_id + 1
+                                 chunk_id <<- chunk_id + 1
       message("Processing chunk of ", chunk_id, " of ", nrow(x), " rows...")
       processed <- x %>%
         dplyr::select(
-          species, scientificName, kingdom, phylum, class, order, family, genus, 
-          taxonRank, occurrenceID, basisOfRecord, eventDate, year, countryCode,
+          species, class, order, family, genus, taxonRank, year, countryCode,
           decimalLatitude, decimalLongitude, coordinateUncertaintyInMeters
-        ) %>%
-        dplyr::distinct(species, decimalLongitude, decimalLatitude, eventDate, .keep_all = TRUE)
+        )
       
       arrow::write_dataset(processed, path = parquet_dir, format = "parquet", partitioning = "year",
                            basename_template = paste0("chunk_", chunk_id, "_part{i}.parquet"))
