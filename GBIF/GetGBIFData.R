@@ -1,6 +1,6 @@
 # ------
 # Function to download GBIF data from gbif.com into an unzipped file
-DownloadGBIF <- function(key, user, user.email, pwd, custom.shp) {
+Download.GBIF <- function(key, user, user.email, pwd, custom.shp) {
   if (is.null(custom.shp)) stop("A valid spatial object (sf/Spatial) is required.")
   
   # 1. Convert shape to WKT
@@ -54,7 +54,7 @@ DownloadGBIF <- function(key, user, user.email, pwd, custom.shp) {
 
 # ------
 # Function to convert GBIF CSV to Parquet (The "Arrow" Way) 
-GBIF_to_Parquet <- function(file_path, parquet_dir) {
+GBIF.to.Parquet <- function(file_path, parquet_dir) {
   
   # 1. Create output directory if needed
   if (!dir.exists(parquet_dir)) {
